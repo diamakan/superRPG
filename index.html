@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Les Gardiens du Bonnet</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ee5816">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gardiens du Bonnet">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { --orange:#ee5816; --ink:#1d2433; --soft:#5b6477; --line:#e3e6ec; --cyan:#2bb8ea; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#9fd3f2; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); user-select:none; -webkit-user-select:none; }
+  canvas#c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  #bars, #floats { position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+  .bar { position:absolute; width:38px; height:6px; margin-left:-19px; background:rgba(0,0,0,.55); border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:#4cd964; }
+  .bar.e i { background:#ff5a5a; }
+  .bar.done { opacity:.45; }
+  .float { position:absolute; font-weight:800; font-size:17px; text-shadow:0 1px 0 #000, 0 0 4px rgba(0,0,0,.6); transform:translate(-50%,0); animation:rise .9s ease-out forwards; white-space:nowrap; }
+  @keyframes rise { to { transform:translate(-50%,-46px); opacity:0; } }
+  #ui { position:fixed; left:0; right:0; bottom:0; margin:0 auto; max-width:620px; overflow:hidden; background:#fff; border-radius:20px 20px 0 0; box-shadow:0 -4px 18px rgba(0,0,0,.18); }
+  #uiin { max-height:64vh; overflow-y:auto; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+  #ui.center { top:50%; bottom:auto; transform:translateY(-50%); border-radius:20px; max-width:420px; width:calc(100% - 32px); text-align:center; }
+  #ui.hide, #bhud.hide, #top.hide { display:none; }
+  h1 { margin:0 0 6px; font-size:28px; color:var(--orange); letter-spacing:-.4px; }
+  h2 { margin:0 0 8px; font-size:19px; }
+  h3 { margin:14px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--soft); }
+  p { margin:6px 0; line-height:1.45; font-size:15px; }
+  .muted { color:var(--soft); font-size:13px; }
+  button { font:inherit; border:0; border-radius:12px; padding:11px 14px; font-weight:700; background:#eef0f4; color:var(--ink); }
+  button:disabled { opacity:.4; }
+  button.primary { background:var(--orange); color:#fff; box-shadow:0 3px 0 #b53e08; }
+  button.primary:active { transform:translateY(2px); box-shadow:0 1px 0 #b53e08; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .row.end { justify-content:flex-end; margin-top:12px; }
+  .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .card { border:2px solid var(--line); border-radius:14px; padding:10px 12px; text-align:left; background:#fff; font-weight:400; width:100%; }
+  .card b { display:block; font-size:15px; }
+  .card span { display:block; font-size:12.5px; color:var(--soft); line-height:1.35; margin-top:2px; }
+  .card.on { border-color:var(--orange); background:#fff5ef; }
+  .node { display:flex; justify-content:space-between; align-items:center; gap:10px; border:2px solid var(--line); border-radius:14px; padding:10px 12px; margin-top:8px; }
+  .node.main { border-color:var(--orange); background:#fff5ef; }
+  .node div b { display:block; } .node div span { font-size:12.5px; color:var(--soft); }
+  .sw { display:inline-block; width:16px; height:16px; border-radius:50%; border:2px solid rgba(0,0,0,.15); vertical-align:-3px; margin-right:3px; }
+  .chip { display:inline-block; background:#eef0f4; border-radius:999px; padding:3px 10px; font-size:12.5px; font-weight:700; }
+  .chip.gold { background:#fff1c2; color:#7a5600; }
+  select { font:inherit; padding:8px; border-radius:10px; border:2px solid var(--line); background:#fff; max-width:100%; flex:1; min-width:0; }
+  .slot { display:flex; align-items:center; gap:8px; margin-top:6px; } .slot label { width:74px; font-size:13px; color:var(--soft); flex:none; }
+  .speaker { font-weight:800; color:var(--orange); font-size:13px; text-transform:uppercase; letter-spacing:.5px; }
+  #top { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:calc(10px + env(safe-area-inset-top)) 12px 0; pointer-events:none; }
+  #top .chip { background:rgba(255,255,255,.9); font-size:14px; padding:6px 12px; box-shadow:0 2px 0 rgba(0,0,0,.12); }
+  #bhud { position:fixed; left:0; right:0; bottom:0; margin:0 auto; max-width:620px; background:rgba(255,255,255,.95); border-radius:18px 18px 0 0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); box-shadow:0 -4px 18px rgba(0,0,0,.18); }
+  #binfo { font-size:13.5px; min-height:38px; line-height:1.4; } #binfo b { font-size:15px; }
+  #bbtn { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:8px; } #bbtn button { padding:11px 4px; font-size:13.5px; }
+  #banner { position:fixed; top:22%; left:50%; transform:translateX(-50%); background:rgba(29,36,51,.88); color:#fff; font-weight:800; font-size:20px; padding:10px 22px; border-radius:14px; pointer-events:none; opacity:0; transition:opacity .25s; white-space:nowrap; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bars"></div><div id="floats"></div>
+<div id="top" class="hide"><span class="chip" id="tTurn"></span><span class="chip" id="tGoal"></span></div>
+<div id="banner"></div>
+<div id="bhud" class="hide"><div id="binfo"></div><div id="bbtn">
+  <button id="bAtk">Attaquer</button><button id="bSkill">Compétence</button><button id="bWait">Attendre</button><button id="bEnd">Fin du tour</button>
+</div></div>
+<div id="ui" class="center"><div id="uiin"></div></div>
+
+<script src="three.min.js"></script>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const UI = $('uiin'), UIW = $('ui');
+if (!window.THREE) { UI.innerHTML = '<h1>Les Gardiens du Bonnet</h1><p>Le moteur 3D n\'a pas pu se charger. Vérifiez la connexion puis rechargez la page.</p>'; return; }
+
+// =================================================================== DONNÉES
+const LOOKS = [
+  { id: 'sam', name: 'Sam', skin: 0xb07852, skinD: 0x966242, hair: 0x34241c, beanie: 0xee5816, beanieD: 0xd7480f, shirt: 0xa0a598, pants: 0x23262d, shoe: 0xf5f5f3 },
+  { id: 'noa', name: 'Noa', skin: 0x6b4226, skinD: 0x57341d, hair: 0x15100d, beanie: 0x2f7de1, beanieD: 0x2263b8, shirt: 0xf2c230, pants: 0x2b3a67, shoe: 0xffffff },
+  { id: 'eli', name: 'Eli', skin: 0xf0c8a0, skinD: 0xd9ab82, hair: 0x8a5a2b, beanie: 0x2fa866, beanieD: 0x238650, shirt: 0xd8433b, pants: 0x6b7280, shoe: 0x2a2a2e },
+  { id: 'kai', name: 'Kai', skin: 0xd9a066, skinD: 0xbd864f, hair: 0x101014, beanie: 0x8e44c9, beanieD: 0x7333a6, shirt: 0xf5f5f5, pants: 0x1f8a8a, shoe: 0xffd23f },
+  { id: 'lou', name: 'Lou', skin: 0x8d5a3b, skinD: 0x75482d, hair: 0x2a1a12, beanie: 0xe84a8a, beanieD: 0xc2356f, shirt: 0x3fb7c9, pants: 0xf2f2f2, shoe: 0xe84a8a },
+  { id: 'tom', name: 'Tom', skin: 0xf5d6b8, skinD: 0xe0b995, hair: 0xd9a441, beanie: 0x2a2a2e, beanieD: 0x17171a, shirt: 0x3d8b40, pants: 0x8a5a36, shoe: 0xf5f5f3 }
+];
+const CLASSES = {
+  chevalier:  { name: 'Chevalier',  hp: 34, atk: 9,  def: 5, mov: 3, rng: 1, desc: 'Robuste. Protège l\'équipe au corps à corps.', skill: 'Charge de bouclier', sdesc: 'Gros coup qui étourdit l\'ennemi 1 tour.', kind: 'enemy', sr: 1 },
+  mage:       { name: 'Mage',       hp: 22, atk: 11, def: 1, mov: 3, rng: 3, desc: 'Fragile mais puissant, attaque à distance.', skill: 'Boule d\'énergie', sdesc: 'Explose sur la cible et les ennemis voisins.', kind: 'enemy', sr: 4 },
+  invocateur: { name: 'Invocateur', hp: 24, atk: 8,  def: 2, mov: 3, rng: 3, desc: 'Fait apparaître des esprits alliés.', skill: 'Invocation', sdesc: 'Appelle une Pelote, un esprit qui se bat pour toi.', kind: 'free', sr: 2 },
+  voleur:     { name: 'Voleur',     hp: 26, atk: 9,  def: 2, mov: 5, rng: 1, crit: 0.3, desc: 'Très rapide, coups critiques fréquents.', skill: 'Attaque éclair', sdesc: 'Bondit sur un ennemi éloigné et frappe fort.', kind: 'enemy', sr: 5 },
+  archer:     { name: 'Archer',     hp: 24, atk: 9,  def: 2, mov: 4, rng: 4, desc: 'Touche de très loin.', skill: 'Pluie de flèches', sdesc: 'Touche la cible et tout ce qui l\'entoure.', kind: 'enemy', sr: 5 },
+  soigneur:   { name: 'Soigneur',   hp: 26, atk: 7,  def: 3, mov: 4, rng: 2, desc: 'Soigne ses alliés pendant le combat.', skill: 'Soin', sdesc: 'Rend des points de vie à un allié proche.', kind: 'ally', sr: 3 },
+  lancier:    { name: 'Lancier',    hp: 30, atk: 10, def: 3, mov: 4, rng: 2, desc: 'Frappe à deux cases avec sa lance.', skill: 'Percée', sdesc: 'Transperce la cible et l\'ennemi juste derrière.', kind: 'enemy', sr: 2 },
+  moine:      { name: 'Moine',      hp: 30, atk: 10, def: 3, mov: 4, rng: 1, desc: 'Combattant à mains nues, rapide et solide.', skill: 'Rafale de poings', sdesc: 'Frappe deux fois de suite le même ennemi.', kind: 'enemy', sr: 1 },
+  barde:      { name: 'Barde',      hp: 24, atk: 7,  def: 2, mov: 4, rng: 3, desc: 'Sa musique rend toute l\'équipe plus forte.', skill: 'Chant du courage', sdesc: 'Alliés proches : +2 en attaque et quelques PV rendus.', kind: 'self', sr: 3 }
+};
+const SLOTS = [['arme', 'Arme'], ['tete', 'Tête'], ['torse', 'Plastron'], ['gants', 'Gants'], ['pieds', 'Chaussures']];
+const WNAMES = {
+  chevalier: ['Épée de bois', 'Épée d\'acier', 'Lame du gardien', 'Épée d\'Aurore'], mage: ['Bâton de noisetier', 'Bâton de braise', 'Bâton stellaire', 'Bâton d\'Aurore'],
+  invocateur: ['Carnet d\'apprenti', 'Grimoire relié', 'Codex des esprits', 'Grimoire d\'Aurore'], voleur: ['Canifs', 'Dagues affûtées', 'Lames jumelles', 'Dagues d\'Aurore'],
+  archer: ['Lance-pierre', 'Arc court', 'Arc long', 'Arc d\'Aurore'], soigneur: ['Baguette de saule', 'Sceptre de cuivre', 'Sceptre lunaire', 'Sceptre d\'Aurore'],
+  lancier: ['Bâton pointu', 'Lance de fer', 'Hallebarde', 'Lance d\'Aurore'], moine: ['Bandes de tissu', 'Poings cloutés', 'Gantelets du tigre', 'Poings d\'Aurore'], barde: ['Flûte de roseau', 'Luth de voyage', 'Harpe d\'argent', 'Luth d\'Aurore']
+};
+const ITEMS = {
+  w1: { slot: 'arme', name: 'Arme d\'apprenti', wt: 0 }, w2: { slot: 'arme', name: 'Arme de qualité', wt: 1, atk: 3, price: 120, need: 0 },
+  w3: { slot: 'arme', name: 'Arme de maître', wt: 2, atk: 6, price: 300, need: 2 }, w4: { slot: 'arme', name: 'Arme d\'Aurore', wt: 3, atk: 9 },
+  h0: { slot: 'tete', name: 'Bonnet de laine' }, h1: { slot: 'tete', name: 'Bonnet matelassé', def: 1, hp: 4, price: 60, need: 0 },
+  h2: { slot: 'tete', name: 'Casque de cuivre', def: 2, hp: 6, price: 150, need: 1 }, h3: { slot: 'tete', name: 'Heaume du gardien', def: 3, hp: 10, price: 320, need: 3 },
+  h4: { slot: 'tete', name: 'Bonnet d\'Aurore', def: 3, hp: 12, atk: 2 },
+  t1: { slot: 'torse', name: 'Plastron de cuir', def: 2, price: 80, need: 0 }, t2: { slot: 'torse', name: 'Cotte de mailles', def: 4, price: 200, need: 2 },
+  t3: { slot: 'torse', name: 'Plastron runique', def: 6, hp: 8, price: 380, need: 3 }, t4: { slot: 'torse', name: 'Plastron d\'Aurore', def: 7, hp: 10 },
+  g1: { slot: 'gants', name: 'Gants de laine', atk: 1, price: 50, need: 0 }, g2: { slot: 'gants', name: 'Gants cloutés', atk: 2, price: 140, need: 1 },
+  g3: { slot: 'gants', name: 'Gantelets', atk: 3, def: 1, price: 300, need: 3 }, g4: { slot: 'gants', name: 'Gants de velours', atk: 3, crit: 0.15 },
+  f0: { slot: 'pieds', name: 'Baskets blanches' }, f1: { slot: 'pieds', name: 'Bottes de marche', mov: 1, price: 160, need: 1 },
+  f2: { slot: 'pieds', name: 'Bottes du vent', mov: 1, def: 1, hp: 4, price: 340, need: 3 }, f3: { slot: 'pieds', name: 'Bottes d\'Aurore', mov: 2, def: 1 }
+};
+const FOES = {
+  ombre:  { name: 'Ombre', hp: 16, atk: 7, def: 1, mov: 3, rng: 1 },
+  chef:   { name: 'Ombre-chef', hp: 30, atk: 9, def: 2, mov: 3, rng: 1 },
+  chauve: { name: 'Chauve-ombre', hp: 10, atk: 6, def: 0, mov: 5, rng: 1 },
+  tireur: { name: 'Tireur d\'ombre', hp: 13, atk: 7, def: 0, mov: 3, rng: 3 },
+  golem:  { name: 'Golem de fil', hp: 36, atk: 9, def: 3, mov: 2, rng: 1 },
+  roi:    { name: 'Roi Effiloché', hp: 80, atk: 10, def: 4, mov: 3, rng: 2, boss: true }
+};
+const THEMES = {
+  village: { a: 0x8fcf73, b: 0x84c468, side: 0x6f5a3e, bg: 0x9fd3f2, obs: 'crate' }, moulin: { a: 0xc9a36b, b: 0xbf9860, side: 0x7a5a36, bg: 0xf3d9a4, obs: 'crate' },
+  foret: { a: 0x5fa85a, b: 0x569d52, side: 0x4a3b2a, bg: 0x7fbf9a, obs: 'tree' }, mine: { a: 0x8b8378, b: 0x80786e, side: 0x4a443d, bg: 0x2a2530, obs: 'rock' },
+  pont: { a: 0xb98a55, b: 0xab7d4b, side: 0x6b4a28, bg: 0xbfe3f7, obs: 'crate' }, arene: { a: 0xe6cf9c, b: 0xdbc38e, side: 0x9c8455, bg: 0x23304f, obs: 'pillar' },
+  ruines: { a: 0xa9adb6, b: 0x9ea2ac, side: 0x676b75, bg: 0xc9c2d6, obs: 'pillar' }, palais: { a: 0x4a3a66, b: 0x41325b, side: 0x231933, bg: 0x1a1226, obs: 'rock' }
+};
+const MAIN = [
+  { id: 'b1', title: 'Le village attaqué', sub: 'Chapitre 1 · Mailleval', lvl: 1, theme: 'village', foes: ['ombre', 'ombre', 'ombre'], gold: 120, obs: 5,
+    pre: [['Doyenne Odile', 'Gardien ! Les Ombres sont sur la place du village. Depuis que le Grand Métier s\'est arrêté, plus rien ne les retient.'], ['Doyenne Odile', 'Ton bonnet brille encore : elles te craignent. Chasse-les avant qu\'elles n\'atteignent les maisons !'], ['{c1}', 'Attends-moi ! J\'ai tout vu depuis le toit du moulin. À deux, on les repousse.']],
+    post: [['Doyenne Odile', 'Bravo ! En fuyant, elles ont filé vers la forêt des Pelotes. L\'une d\'elles portait une Bobine d\'Aurore.'], ['', 'Le village est sauvé pour ce soir. La boutique t\'ouvre ses portes, et le terrain d\'entraînement aussi.']] },
+  { id: 'b2', title: 'La forêt des Pelotes', sub: 'Chapitre 2 · Sous les arbres', lvl: 2, theme: 'foret', foes: ['chef', 'ombre', 'ombre', 'chauve'], gold: 180, obs: 8, join: 1,
+    pre: [['', 'Les arbres sont couverts de fils noirs. Au fond de la clairière, une Ombre plus grande que les autres serre la première Bobine.'], ['{c1}', 'C\'est leur chef. Si on le bat, les autres perdront courage.']],
+    post: [['', 'L\'Ombre-chef se défait comme un vieux pull. Derrière lui, une cage de fil noir : la première Bobine d\'Aurore, et un prisonnier.'], ['{c2}', 'Merci ! Ils m\'ont attrapé quand j\'ai voulu reprendre la Bobine tout seul. Laissez-moi vous aider à finir le travail.'], ['', '{c2} rejoint l\'équipe. Le fil de la Bobine tire vers le nord : le pont de Corde.']] },
+  { id: 'b3', title: 'Le pont de Corde', sub: 'Chapitre 3 · Au-dessus du ravin', lvl: 3, theme: 'pont', foes: ['tireur', 'tireur', 'tireur', 'ombre', 'ombre', 'chauve'], gold: 220, obs: 2, bridge: true,
+    pre: [['', 'Le pont de Corde est le seul passage vers les ruines. Des tireurs d\'ombre le gardent, et le ravin est sans fond.'], ['{c1}', 'Ils tirent de loin. Fonce sur eux ou reste à couvert, mais ne traîne pas au milieu.']],
+    post: [['', 'Le dernier tireur lâche un petit coffre en tombant : la deuxième Bobine d\'Aurore !'], ['{c2}', 'Plus qu\'une. De l\'autre côté du pont, ce sont les ruines du Grand Métier.']] },
+  { id: 'b4', title: 'Les ruines du Métier', sub: 'Chapitre 4 · Le Grand Métier', lvl: 4, theme: 'ruines', foes: ['golem', 'tireur', 'tireur', 'ombre', 'ombre'], gold: 300, obs: 7,
+    pre: [['', 'Le Grand Métier à tisser est là, immobile et couvert de poussière. Devant lui, un géant de laine noire se redresse.'], ['{c2}', 'Un Golem de fil. Le Roi l\'a tissé lui-même. Il est lent, mais ne restez pas à côté de lui trop longtemps.']],
+    post: [['', 'Le Golem s\'effondre en un tas de laine. Derrière le Métier, une porte s\'ouvre sur le Palais Décousu.'], ['{c1}', 'Il ne manque plus qu\'une Bobine. Et c\'est lui qui l\'a.']] },
+  { id: 'b5', title: 'Le Roi Effiloché', sub: 'Chapitre 5 · Le Palais Décousu', lvl: 5, theme: 'palais', foes: ['roi', 'ombre', 'ombre', 'tireur', 'tireur'], gold: 0, obs: 6,
+    pre: [['Roi Effiloché', 'Sans fil, plus de bonnets. Sans bonnets, plus de Gardiens. Et sans Gardiens, on finira bien par se souvenir de moi !'], ['', 'Le Roi appelle de nouvelles Ombres tous les trois tours. Ne le laisse pas s\'installer.']],
+    post: [['', 'Le Roi se défait, fil après fil. Sous son manteau, il n\'y a qu\'un vieux tisserand : celui qui avait construit le Grand Métier, et que plus personne ne venait voir.'], ['Le vieux tisserand', 'Je voulais seulement qu\'on ne m\'oublie pas…'], ['', 'Tu lui tends un bonnet. Il le met, et pour la première fois depuis longtemps, il sourit.'], ['Doyenne Odile', 'Les trois Bobines sont revenues. Le Grand Métier tisse de nouveau, et l\'aube se lève sur Mailleval. Merci, Gardiens du Bonnet.'], ['', 'FIN. Tu peux continuer à explorer les quêtes annexes.']] }
+];
+const SIDES = [
+  { id: 's1', after: 1, title: 'Le chat du meunier', sub: 'Quête annexe · Le moulin', lvl: 2, theme: 'moulin', foes: ['chauve', 'chauve', 'chauve', 'chauve', 'ombre'], gold: 90, obs: 6, item: 'g4',
+    pre: [['Le meunier', 'Mon chat Flocon est coincé en haut du moulin, et des chauves-ombres tournent autour ! Si tu le sauves, je te donne les gants de velours de mon grand-père.']],
+    post: [['Le meunier', 'Flocon ! Viens là, mon gros. Tiens, Gardien : avec ces gants, tes coups font mouche plus souvent.']] },
+  { id: 's2', after: 2, title: 'La mine oubliée', sub: 'Quête annexe · Mine de cuivre', lvl: 3, theme: 'mine', foes: ['golem', 'tireur', 'tireur', 'chauve'], gold: 150, obs: 8, item: 'w4',
+    pre: [['Une mineuse', 'Tout au fond de la vieille mine, il y a un coffre scellé avec du Fil d\'Aurore. Personne n\'ose y aller : un golem dort devant.']],
+    post: [['', 'Dans le coffre, une arme tissée de lumière. Elle prend la forme qui convient à celui qui la porte.']] },
+  { id: 's3', after: 3, title: 'L\'arène des lucioles', sub: 'Quête annexe · Tournoi de nuit', lvl: 4, theme: 'arene', foes: ['golem', 'ombre', 'ombre', 'ombre', 'tireur', 'tireur', 'chauve', 'chauve'], gold: 260, obs: 4, item: 'h4',
+    pre: [['Reine des lucioles', 'Chaque nuit, les Ombres viennent éteindre nos lumières. Tiens l\'arène jusqu\'au bout, et le Bonnet d\'Aurore est à toi.']],
+    post: [['Reine des lucioles', 'Jamais l\'arène n\'a autant brillé. Porte ce bonnet : c\'est le premier que le Grand Métier ait tissé.']] },
+  { id: 's4', after: 2, title: 'Le Gardien égaré', sub: 'Quête annexe · Marais des Mailles', lvl: 3, theme: 'foret', foes: ['chauve', 'chauve', 'chauve', 'ombre', 'tireur'], gold: 120, obs: 7, join: 2,
+    pre: [['Doyenne Odile', '{c3} est parti seul poursuivre des chauves-ombres dans le marais des Mailles, et n\'est pas revenu. Tu veux bien aller voir ?']],
+    post: [['{c3}', 'Je tournais en rond depuis hier ! Merci. Si vous voulez encore de moi, je vous suis.'], ['', '{c3} rejoint l\'équipe.']] },
+  { id: 's5', after: 3, title: 'Le verger aux épouvantails', sub: 'Quête annexe · Ferme des Coteaux', lvl: 4, theme: 'village', foes: ['chef', 'ombre', 'ombre', 'ombre', 'tireur', 'chauve'], gold: 200, obs: 6, item: 't4',
+    pre: [['Un fermier', 'Mes épouvantails se sont mis à marcher : les Ombres se cachent dedans ! Dans la grange, il reste le plastron de l\'ancien Gardien. Il est à toi si tu nettoies le verger.']],
+    post: [['Un fermier', 'Le verger est tranquille. Tiens, le plastron. Il a arrêté plus d\'un coup, celui-là.']] },
+  { id: 's6', after: 4, title: 'Le phare décousu', sub: 'Quête annexe · La côte', lvl: 5, theme: 'ruines', foes: ['golem', 'golem', 'chef', 'tireur', 'tireur'], gold: 300, obs: 6, item: 'f3',
+    pre: [['Gardienne du phare', 'La lumière du phare s\'est éteinte, et deux golems bloquent l\'escalier. Rallume-la, et je t\'offre les bottes qui m\'ont fait courir sur toute la côte.']],
+    post: [['Gardienne du phare', 'La lumière est revenue ! Voilà les Bottes d\'Aurore. Avec elles, personne ne te rattrape.']] }
+];
+function trainingDef() {
+  const avg = G.party.reduce((a, m) => a + m.lvl, 0) / G.party.length, lvl = Math.max(1, Math.min(7, Math.round(avg * 0.6))), pool = ['ombre', 'ombre', 'chauve', 'tireur'].concat(lvl > 2 ? ['chef', 'golem'] : []);
+  const foes = []; for (let i = 0; i < Math.min(7, G.party.length + 2); i++) foes.push(pool[Math.floor(Math.random() * pool.length)]);
+  return { id: 'tr', repeat: true, title: 'Terrain d\'entraînement', sub: 'Répétable', lvl, theme: 'arene', foes, gold: 30 + 10 * lvl, obs: 4,
+    pre: [['Maître d\'armes', 'Des mannequins d\'ombre, tissés pour l\'exercice. Ils cognent pour de vrai, alors reste concentré !']], post: [['Maître d\'armes', 'Pas mal. Reviens quand tu veux : c\'est en s\'entraînant qu\'on devient Gardien.']] };
+}
+const INTRO = [['', 'Dans la vallée de Mailleval, chaque enfant reçoit un bonnet tissé avec le Fil d\'Aurore. Tant que le Grand Métier tisse, les Ombres restent loin des villages.'],
+  ['', 'Mais cette nuit, le Roi Effiloché a volé les trois Bobines d\'Aurore. Le Métier s\'est arrêté, et les Ombres descendent des collines.'],
+  ['', 'Il reste un bonnet qui brille encore : le tien. Tu es le dernier Gardien du Bonnet.']];
+
+// =================================================================== ÉTAT & SAUVEGARDE
+let G = null, SPEED = 1, AUTO = false;
+const KEY = 'gardiens.save.v1';
+function save() { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (e) {} }
+function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+function member(look, cls, lvl) { return { name: LOOKS[look].name, look, cls, lvl: lvl || 1, xp: 0, eq: { arme: 'w1', tete: 'h0', torse: null, gants: null, pieds: 'f0' } }; }
+function stats(m) {
+  const c = CLASSES[m.cls], L = m.lvl - 1, s = { hp: c.hp + 4 * L, atk: c.atk + L, def: c.def + Math.floor(L / 2), mov: c.mov, rng: c.rng, crit: c.crit || 0 };
+  SLOTS.forEach(([k]) => { const it = ITEMS[m.eq[k]]; if (it) { s.hp += it.hp || 0; s.atk += it.atk || 0; s.def += it.def || 0; s.mov += it.mov || 0; s.crit += it.crit || 0; } });
+  return s;
+}
+function itemName(id, cls) { const it = ITEMS[id]; if (!it) return 'Rien'; return it.slot === 'arme' && cls ? WNAMES[cls][it.wt] : it.name; }
+function itemBonus(id) { const it = ITEMS[id]; if (!it) return ''; const p = []; if (it.atk) p.push('ATQ +' + it.atk); if (it.def) p.push('DEF +' + it.def); if (it.hp) p.push('PV +' + it.hp); if (it.mov) p.push('DÉP +' + it.mov); if (it.crit) p.push('Critique +' + Math.round(it.crit * 100) + '%'); return p.join(', '); }
+function fill(t) { return t.replace('{c1}', G.comp[0].name).replace('{c2}', G.comp[1].name).replace('{c3}', G.comp[2].name); }
+const need = m => 60 + 20 * m.lvl;
+
+// =================================================================== 3D
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fd3f2);
+const cam = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 100);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f9c, 0.75));
+const sun = new THREE.DirectionalLight(0xfff2d8, 0.5); sun.position.set(-3, 10, 6); scene.add(sun);
+const view = { halfW: 2.4, minH: 2.6, ty: -1.0, battle: false, n: 1 };
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight, a = w / h; renderer.setSize(w, h, false);
+  let hw = view.halfW, hh = hw / a; if (hh < view.minH) { hh = view.minH; hw = hh * a; }
+  if (!view.battle) view.ty = 0.75 - 0.7 * hh;
+  cam.left = -hw; cam.right = hw; cam.top = hh; cam.bottom = -hh;
+  cam.position.set(10, 8.2 + view.ty, 10); cam.lookAt(0, view.ty, 0); cam.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+function setView(battle, n) { view.battle = battle; if (battle) { view.halfW = 5.9; view.minH = 5.2; view.ty = -1.2; } else { view.halfW = 1.5 + 0.55 * (n || 1); view.minH = 2.5; } resize(); }
+
+const mats = {};
+function mat(c) { return mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c })); }
+function box(c, w, h, d, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x || 0, y || 0, z || 0); return m; }
+function ball(c, rx, ry, rz, x, y, z) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 9), mat(c)); m.scale.set(rx, ry, rz); m.position.set(x, y, z); return m; }
+function cone(c, r, h, x, y, z, seg) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 8), mat(c)); m.position.set(x, y, z); return m; }
+function cyl(c, r, h, x, y, z) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 8), mat(c)); m.position.set(x, y, z); return m; }
+
+function buildHero(look, cls) {
+  const K = LOOKS[look], root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const H = { root, body, legs: [], knees: [], arms: [], elbows: [] };
+  [-1, 1].forEach(s => {
+    const leg = new THREE.Group(); leg.position.set(s * 0.093, 0.51, 0); leg.add(box(K.pants, 0.165, 0.25, 0.19, 0, -0.12, 0));
+    const knee = new THREE.Group(); knee.position.set(0, -0.24, 0); leg.add(knee);
+    knee.add(box(K.pants, 0.16, 0.22, 0.18, 0, -0.1, 0)); knee.add(box(K.shoe, 0.17, 0.09, 0.27, 0, -0.23, 0.04));
+    body.add(leg); H.legs.push(leg); H.knees.push(knee);
+    const arm = new THREE.Group(); arm.position.set(s * 0.262, 0.9, 0); arm.add(box(K.shirt, 0.15, 0.24, 0.2, 0, -0.1, 0));
+    const el = new THREE.Group(); el.position.set(0, -0.21, 0); arm.add(el);
+    el.add(box(K.skin, 0.105, 0.2, 0.125, 0, -0.09, 0)); el.add(box(K.skinD, 0.115, 0.085, 0.135, 0, -0.225, 0));
+    body.add(arm); H.arms.push(arm); H.elbows.push(el);
+  });
+  body.add(box(K.pants, 0.36, 0.09, 0.215, 0, 0.5, 0)); body.add(box(K.shirt, 0.37, 0.42, 0.22, 0, 0.72, 0)); body.add(box(K.skin, 0.12, 0.06, 0.12, 0, 0.94, 0));
+  const head = new THREE.Group(); head.position.set(0, 1.12, 0); body.add(head); const f = 0.16;
+  head.add(box(K.skin, 0.34, 0.32, 0.32, 0, 0, 0));
+  [-1, 1].forEach(s => {
+    head.add(box(K.skin, 0.03, 0.08, 0.06, s * 0.18, -0.02, 0)); head.add(box(0xfafafa, 0.07, 0.06, 0.01, s * 0.075, 0, f + 0.004));
+    head.add(box(0x2d1c14, 0.036, 0.045, 0.012, s * 0.068, -0.005, f + 0.008)); head.add(box(K.hair, 0.08, 0.016, 0.014, s * 0.075, 0.05, f + 0.006));
+    head.add(box(0x782d2d, 0.018, 0.018, 0.01, s * 0.062, -0.092, f + 0.004)); head.add(box(K.hair, 0.02, 0.1, 0.2, s * 0.172, 0.06, -0.04));
+  });
+  head.add(box(K.skinD, 0.04, 0.035, 0.03, 0, -0.045, f + 0.012)); head.add(box(0x782d2d, 0.11, 0.018, 0.01, 0, -0.105, f + 0.004));
+  for (let i = 0; i < 7; i++) { const hh = 0.045 + 0.015 * (i % 2); head.add(box(K.hair, 0.05, hh, 0.012, -0.14 + i * 0.28 / 6, 0.118 - hh / 2, f + 0.006)); }
+  head.add(box(K.hair, 0.35, 0.2, 0.02, 0, 0, -0.165));
+  head.add(box(K.beanieD, 0.39, 0.09, 0.37, 0, 0.165, -0.005)); head.add(box(K.beanie, 0.35, 0.14, 0.33, 0, 0.27, -0.01)); head.add(box(K.beanie, 0.26, 0.06, 0.25, 0, 0.36, -0.02));
+  // arme selon la classe (main droite = index 1, main gauche = index 0)
+  const R = H.elbows[1], L = H.elbows[0];
+  if (cls === 'chevalier') { R.add(box(0xcfd6e0, 0.04, 0.07, 0.55, 0, -0.24, 0.36)); R.add(box(0x8a5a36, 0.16, 0.05, 0.05, 0, -0.24, 0.09)); L.add(box(0x3b6fb5, 0.05, 0.36, 0.32, -0.08, -0.12, 0.02)); L.add(box(0xffd23f, 0.06, 0.12, 0.1, -0.085, -0.12, 0.02)); }
+  else if (cls === 'mage') { R.add(cyl(0x8a5a36, 0.025, 1.1, 0, -0.05, 0.1)); R.add(ball(0x3fd0ff, 0.09, 0.09, 0.09, 0, 0.55, 0.1)); }
+  else if (cls === 'invocateur') { L.add(box(0x7333a6, 0.22, 0.05, 0.28, 0, -0.27, 0.1)); L.add(box(0xf5f0e0, 0.19, 0.03, 0.25, 0, -0.245, 0.1)); R.add(ball(0x9be7ff, 0.07, 0.07, 0.07, 0, -0.38, 0.12)); }
+  else if (cls === 'voleur') { [R, L].forEach(e => { e.add(box(0xcfd6e0, 0.03, 0.05, 0.26, 0, -0.24, 0.2)); e.add(box(0x23262d, 0.05, 0.06, 0.07, 0, -0.24, 0.05)); }); }
+  else if (cls === 'archer') { const b = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.022, 6, 14, Math.PI), mat(0x8a5a36)); b.rotation.set(0, Math.PI / 2, -Math.PI / 2); b.position.set(0, -0.22, 0.1); L.add(b); L.add(box(0xf5f0e0, 0.01, 0.68, 0.01, 0, -0.22, 0.1)); }
+  else if (cls === 'soigneur') { R.add(cyl(0xcfd6e0, 0.022, 0.6, 0, -0.1, 0.1)); R.add(box(0xffd23f, 0.16, 0.05, 0.05, 0, 0.26, 0.1)); R.add(box(0xffd23f, 0.05, 0.16, 0.05, 0, 0.26, 0.1)); }
+  else if (cls === 'lancier') { R.add(cyl(0x8a5a36, 0.022, 1.5, 0, 0.15, 0.1)); R.add(cone(0xcfd6e0, 0.06, 0.22, 0, 1.0, 0.1, 6)); }
+  else if (cls === 'moine') { [R, L].forEach(e => e.add(box(0xd8433b, 0.135, 0.11, 0.155, 0, -0.2, 0))); }
+  else if (cls === 'barde') { L.add(ball(0xb9793f, 0.13, 0.17, 0.06, 0, -0.26, 0.13)); L.add(box(0x7a5231, 0.035, 0.3, 0.03, 0, -0.02, 0.13)); L.add(box(0x2d1c14, 0.05, 0.05, 0.02, 0, -0.26, 0.19)); }
+  return H;
+}
+function buildFoe(type) {
+  const g = new THREE.Group(), b = new THREE.Group(); g.add(b);
+  const blob = (c, d, eye) => { b.add(ball(c, 0.42, 0.4, 0.42, 0, 0.48, 0)); [-1, 1].forEach(s => { const h = cone(d, 0.09, 0.26, s * 0.2, 0.9, 0); h.rotation.z = -s * 0.35; b.add(h); b.add(ball(eye, 0.065, 0.085, 0.05, s * 0.15, 0.56, 0.37)); b.add(ball(0x1b0b2b, 0.03, 0.045, 0.03, s * 0.15, 0.55, 0.41)); g.add(ball(d, 0.12, 0.08, 0.14, s * 0.19, 0.08, 0.04)); }); };
+  if (type === 'ombre') blob(0x5b2a86, 0x2e1247, 0xffe14a);
+  else if (type === 'chef') { blob(0x4a1f75, 0xb3261e, 0xff5a3a); g.scale.setScalar(1.3); }
+  else if (type === 'tireur') { blob(0x2a6f6f, 0x16403f, 0xb6ff5a); const bow = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 6, 12, Math.PI), mat(0x16403f)); bow.rotation.set(0, Math.PI / 2, -Math.PI / 2); bow.position.set(0.44, 0.5, 0.15); b.add(bow); }
+  else if (type === 'chauve') { b.position.y = 0.5; b.add(ball(0x7a3fb0, 0.28, 0.26, 0.28, 0, 0.5, 0)); [-1, 1].forEach(s => { const w = box(0x4a1f75, 0.55, 0.04, 0.3, s * 0.48, 0.55, 0); w.userData.wing = s; b.add(w); b.add(ball(0xffe14a, 0.05, 0.06, 0.04, s * 0.1, 0.55, 0.25)); b.add(cone(0x4a1f75, 0.07, 0.18, s * 0.13, 0.82, 0, 6)); }); }
+  else if (type === 'golem') { b.add(box(0x6d5c8f, 0.8, 0.75, 0.55, 0, 0.6, 0)); b.add(box(0x7d6b9e, 0.46, 0.4, 0.42, 0, 1.18, 0)); [-1, 1].forEach(s => { b.add(box(0x5a4b78, 0.24, 0.75, 0.3, s * 0.55, 0.55, 0)); b.add(box(0x5a4b78, 0.28, 0.25, 0.34, s * 0.2, 0.12, 0)); b.add(box(0xffd23f, 0.09, 0.07, 0.02, s * 0.11, 1.22, 0.22)); }); b.add(box(0xffd23f, 0.5, 0.03, 0.02, 0, 0.75, 0.285)); b.add(box(0xffd23f, 0.03, 0.4, 0.02, 0, 0.6, 0.285)); }
+  else if (type === 'roi') { b.add(cone(0x1b0b2b, 0.55, 1.5, 0, 0.75, 0, 10)); b.add(ball(0x2e1247, 0.3, 0.3, 0.3, 0, 1.5, 0)); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; b.add(cone(0xffd23f, 0.06, 0.2, Math.sin(a) * 0.2, 1.85, Math.cos(a) * 0.2, 5)); } [-1, 1].forEach(s => { b.add(ball(0xff3a3a, 0.06, 0.04, 0.04, s * 0.11, 1.53, 0.27)); const a = box(0x2e1247, 0.14, 0.6, 0.14, s * 0.5, 0.95, 0.1); a.rotation.z = s * 0.5; b.add(a); }); g.scale.setScalar(1.25); }
+  else if (type === 'pelote') { b.position.y = 0.25; b.add(ball(0x6fdcff, 0.26, 0.26, 0.26, 0, 0.4, 0)); b.add(ball(0xe8fbff, 0.14, 0.14, 0.14, 0, 0.46, 0.06)); [-1, 1].forEach(s => b.add(ball(0x1d2433, 0.035, 0.05, 0.03, s * 0.09, 0.44, 0.23))); }
+  return { root: g, bob: b, type };
+}
+function buildObstacle(kind) {
+  const g = new THREE.Group();
+  if (kind === 'tree') { g.add(cyl(0x7a5231, 0.1, 0.5, 0, 0.25, 0)); g.add(cone(0x2f7d46, 0.42, 0.75, 0, 0.8, 0)); g.add(cone(0x3a9455, 0.3, 0.6, 0, 1.25, 0)); }
+  else if (kind === 'rock') { g.add(ball(0x6f6a75, 0.4, 0.34, 0.36, 0, 0.26, 0)); g.add(ball(0x837e8a, 0.22, 0.2, 0.22, 0.2, 0.18, 0.2)); }
+  else if (kind === 'pillar') { g.add(box(0x8c909b, 0.6, 0.14, 0.6, 0, 0.07, 0)); g.add(cyl(0xbfc3cc, 0.2, 0.9, 0, 0.59, 0)); g.add(box(0x8c909b, 0.5, 0.1, 0.5, 0, 1.08, 0)); }
+  else { g.add(box(0xb9793f, 0.62, 0.6, 0.62, 0, 0.3, 0)); g.add(box(0x8f5628, 0.66, 0.08, 0.66, 0, 0.56, 0)); g.add(box(0x8f5628, 0.66, 0.08, 0.66, 0, 0.04, 0)); }
+  return g;
+}
+
+// ----- scène de présentation (menus) -----
+const stage = new THREE.Group(); scene.add(stage);
+let stageH = [];
+function setStage(list) {     // list : [{look, cls}]
+  while (stage.children.length) stage.remove(stage.children[0]);
+  stageH = []; stage.visible = true; board.visible = false; setView(false, list.length);
+  const plat = cyl(0xe6cf9c, 0.9 + list.length * 0.45, 0.16, 0, -0.08, 0); plat.geometry = new THREE.CylinderGeometry(0.9 + list.length * 0.45, 1.0 + list.length * 0.45, 0.16, 28); stage.add(plat);
+  list.forEach((m, i) => { const H = buildHero(m.look, m.cls); const off = (i - (list.length - 1) / 2) * 0.95; H.root.position.set(off * 0.72, 0, -off * 0.72); H.root.rotation.y = Math.PI / 4; stage.add(H.root); stageH.push(H); });
+  scene.background.set(0x9fd3f2);
+}
+
+// ----- plateau de combat -----
+const board = new THREE.Group(); scene.add(board); board.visible = false;
+const N = 8, wx = x => x - 3.5;
+let B = null;
+const hlGeo = new THREE.PlaneGeometry(0.9, 0.9);
+function rng32(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function genMap(def) {
+  for (let seed = 1; seed < 60; seed++) {
+    const r = rng32(seed * 7919 + def.id.charCodeAt(1) * 131 + def.id.charCodeAt(0)), blocked = [], voidT = [];
+    for (let y = 0; y < N; y++) { blocked.push(new Array(N).fill(false)); voidT.push(new Array(N).fill(false)); }
+    if (def.bridge) for (let x = 2; x <= 5; x++) [0, 1, 6, 7].forEach(y => { voidT[y][x] = true; blocked[y][x] = true; });
+    let n = 0, guard = 0;
+    while (n < def.obs && guard++ < 200) { const x = 2 + Math.floor(r() * 4), y = Math.floor(r() * N); if (!blocked[y][x]) { blocked[y][x] = true; n++; } }
+    // connexité
+    const seen = new Set(['0,3']), q = [[0, 3]];
+    while (q.length) { const [x, y] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const a = x + dx, b = y + dy, k = a + ',' + b; if (a >= 0 && b >= 0 && a < N && b < N && !blocked[b][a] && !seen.has(k)) { seen.add(k); q.push([a, b]); } }); }
+    let free = 0; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!blocked[y][x]) free++;
+    if (seen.size === free) return { blocked, voidT, r };
+  }
+}
+function buildBoard(def) {
+  while (board.children.length) board.remove(board.children[0]);
+  const T = THEMES[def.theme], map = genMap(def), hl = [];
+  scene.background.set(T.bg);
+  for (let y = 0; y < N; y++) { hl.push([]); for (let x = 0; x < N; x++) {
+    if (map.voidT[y][x]) { hl[y].push(null); continue; }
+    const t = box((x + y) % 2 ? T.a : T.b, 0.98, 0.3, 0.98, wx(x), -0.15, wx(y)); board.add(t);
+    board.add(box(T.side, 0.98, 0.5, 0.98, wx(x), -0.55, wx(y)));
+    const h = new THREE.Mesh(hlGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false })); h.rotation.x = -Math.PI / 2; h.position.set(wx(x), 0.02, wx(y)); h.visible = false; board.add(h); hl[y].push(h);
+    if (map.blocked[y][x]) { const o = buildObstacle(T.obs); o.position.set(wx(x), 0, wx(y)); o.rotation.y = map.r() * 6; board.add(o); }
+  } }
+  if (def.bridge) for (let x = 2; x <= 5; x++) [1.5, 5.5].forEach(y => board.add(box(0x6b4a28, 0.98, 0.5, 0.06, wx(x), 0.2, wx(y) + (y < 3 ? 0 : 0))));
+  stage.visible = false; board.visible = true; setView(true);
+  return { map, hl };
+}
+
+// =================================================================== COMBAT
+const bars = $('bars'), floats = $('floats');
+const tweens = [];
+function tween(dur, fn) { return new Promise(res => tweens.push({ t: 0, dur: dur / SPEED, fn, res })); }
+const wait = ms => tween(ms / 1000, () => {});
+const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const unitAt = (x, y) => B.units.find(u => u.hp > 0 && u.x === x && u.y === y);
+const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && !B.map.blocked[y][x] && !unitAt(x, y);
+const alive = side => B.units.filter(u => u.hp > 0 && u.side === side);
+
+function addUnit(u) {
+  u.root.position.set(wx(u.x), 0, wx(u.y)); u.root.rotation.y = u.side === 'p' ? Math.PI / 2 : -Math.PI / 2; board.add(u.root);
+  u.bar = document.createElement('div'); u.bar.className = 'bar ' + u.side; u.bar.innerHTML = '<i></i>'; bars.appendChild(u.bar);
+  u.t = Math.random() * 6; B.units.push(u); return u;
+}
+function makeFoeUnit(type, lvl, x, y) {
+  const F = FOES[type], f = 1 + 0.15 * (lvl - 1), m = buildFoe(type);
+  
+  return addUnit({ side: 'e', type, name: F.name, boss: F.boss, max: Math.round(F.hp * f), hp: Math.round(F.hp * f), atk: Math.round(F.atk * f), def: Math.floor(F.def * (1 + 0.15 * (lvl - 1))), mov: F.mov, rng: F.rng, crit: 0, x, y, cd: 0, stun: 0, root: m.root, bob: m.bob });
+}
+function startBattle(def) {
+  UIW.classList.add('hide'); bars.innerHTML = ''; floats.innerHTML = '';
+  const bd = buildBoard(def);
+  B = { def, map: bd.map, hl: bd.hl, units: [], turn: 1, phase: 'player', sel: null, mode: 'idle', busy: false, over: false, targets: [], reach: null };
+  const spots = [[1, 3], [0, 4], [1, 5], [0, 2]];
+  G.party.forEach((m, i) => { const s = stats(m), H = buildHero(m.look, m.cls); H.root.scale.setScalar(0.85);
+    addUnit({ side: 'p', m, cls: m.cls, name: m.name, max: s.hp, hp: s.hp, atk: s.atk, def: s.def, mov: s.mov, rng: s.rng, crit: s.crit, x: spots[i][0], y: spots[i][1], cd: 0, stun: 0, done: false, moved: false, root: H.root, H }); });
+  const cells = []; for (let x = 5; x < N; x++) for (let y = 0; y < N; y++) if (!bd.map.blocked[y][x]) cells.push([x, y]);
+  cells.sort((a, b) => (b[0] - a[0]) || (Math.abs(a[1] - 3.5) - Math.abs(b[1] - 3.5)));
+  def.foes.forEach((t, i) => { const c = t === 'roi' || t === 'golem' || t === 'chef' ? cells.shift() : cells.splice(Math.min(cells.length - 1, (i * 3) % cells.length), 1)[0]; makeFoeUnit(t, def.lvl, c[0], c[1]); });
+  $('top').classList.remove('hide'); $('bhud').classList.remove('hide'); $('tGoal').textContent = def.title;
+  banner('À toi de jouer'); refresh();
+  if (AUTO) autoTurn();
+}
+function banner(t) { const b = $('banner'); b.textContent = t; b.style.opacity = 1; setTimeout(() => { b.style.opacity = 0; }, 900 / SPEED); }
+function floatText(u, text, color) {
+  const v = new THREE.Vector3(wx(u.x), 1.3, wx(u.y)).project(cam), d = document.createElement('div');
+  d.className = 'float'; d.textContent = text; d.style.color = color; d.style.left = (v.x + 1) / 2 * window.innerWidth + 'px'; d.style.top = (1 - v.y) / 2 * window.innerHeight + 'px';
+  floats.appendChild(d); setTimeout(() => d.remove(), 950);
+}
+function clearHL() { B.hl.forEach(r => r.forEach(h => { if (h) h.visible = false; })); }
+function showHL(cells, color) { cells.forEach(([x, y]) => { const h = B.hl[y][x]; if (h) { h.material.color.set(color); h.visible = true; } }); }
+function reachOf(u) {       // parcours en largeur : cases atteignables
+  const prev = new Map([[u.x + ',' + u.y, null]]), q = [[u.x, u.y, 0]];
+  while (q.length) { const [x, y, d] = q.shift(); if (d >= u.mov) continue;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const a = x + dx, b = y + dy, k = a + ',' + b;
+      if (a < 0 || b < 0 || a >= N || b >= N || B.map.blocked[b][a] || prev.has(k)) return;
+      const o = unitAt(a, b); if (o && o.side !== u.side) return;
+      prev.set(k, x + ',' + y); q.push([a, b, d + 1]); }); }
+  for (const k of [...prev.keys()]) { const [x, y] = k.split(',').map(Number); const o = unitAt(x, y); if (o && o !== u) prev.set(k, prev.get(k)), prev.get(k) !== undefined && (prev.blockedStop = prev.blockedStop || new Set()).add(k); }
+  return prev;
+}
+const canStop = (R, k) => !(R.blockedStop && R.blockedStop.has(k));
+async function moveUnit(u, tx, ty, R) {
+  const path = []; let k = tx + ',' + ty; while (k && k !== u.x + ',' + u.y) { path.unshift(k.split(',').map(Number)); k = R.get(k); }
+  u.walk = true;
+  for (const [x, y] of path) { const sx = u.x, sy = u.y; u.root.rotation.y = Math.atan2(x - sx, y - sy);
+    await tween(0.16, t => { u.root.position.x = wx(sx + (x - sx) * t); u.root.position.z = wx(sy + (y - sy) * t); }); u.x = x; u.y = y; }
+  u.walk = false;
+}
+async function hit(a, d, mult) {
+  a.root.rotation.y = Math.atan2(d.x - a.x, d.y - a.y);
+  if (dist(a, d) > 1) { const p = ball(a.side === 'p' ? 0x3fd0ff : 0xb14cff, 0.13, 0.13, 0.13, wx(a.x), 0.8, wx(a.y)); p.material = new THREE.MeshBasicMaterial({ color: a.side === 'p' ? 0x7fe3ff : 0xc97bff }); board.add(p);
+    await tween(0.22, t => p.position.set(wx(a.x + (d.x - a.x) * t), 0.8 + Math.sin(t * Math.PI) * 0.4, wx(a.y + (d.y - a.y) * t))); board.remove(p); }
+  else await tween(0.2, t => { const k = Math.sin(t * Math.PI) * 0.35; a.root.position.x = wx(a.x + (d.x - a.x) * k); a.root.position.z = wx(a.y + (d.y - a.y) * k); });
+  await damage(a, d, mult);
+}
+async function damage(a, d, mult) {
+  let dmg = Math.max(1, Math.round(a.atk * mult - d.def + Math.random() * 2 - 1)), crit = a.crit && Math.random() < a.crit;
+  if (crit) dmg = Math.round(dmg * 1.7);
+  d.hp = Math.max(0, d.hp - dmg); floatText(d, (crit ? 'Critique ! ' : '') + '-' + dmg, d.side === 'p' ? '#ff8a8a' : '#ffe14a');
+  await tween(0.14, t => { d.root.position.y = Math.sin(t * Math.PI) * 0.15; });
+  if (d.hp <= 0) { await tween(0.25, t => d.root.scale.setScalar(Math.max(0.001, (1 - t) * 0.8))); board.remove(d.root); d.bar.remove(); }
+}
+function skillTargets(u) {
+  const C = CLASSES[u.cls], out = [];
+  if (C.kind === 'enemy') alive('e').forEach(e => { if (dist(u, e) <= C.sr && (u.cls !== 'voleur' || landing(u, e))) out.push([e.x, e.y]); });
+  else if (C.kind === 'self') out.push([u.x, u.y]);
+  else if (C.kind === 'ally') alive('p').forEach(p => { if (dist(u, p) <= C.sr && p.hp < p.max) out.push([p.x, p.y]); });
+  else if (alive('p').filter(p => p.summon).length < 2) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (free(x, y) && dist(u, { x, y }) <= C.sr) out.push([x, y]);
+  return out;
+}
+function landing(u, e) { return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [e.x + dx, e.y + dy]).filter(([x, y]) => free(x, y) || (x === u.x && y === u.y)).sort((a, b) => dist(u, { x: a[0], y: a[1] }) - dist(u, { x: b[0], y: b[1] }))[0]; }
+async function useSkill(u, x, y) {
+  const C = CLASSES[u.cls], t = unitAt(x, y); u.cd = 3; floatText(u, C.skill, '#9be7ff'); await wait(250);
+  if (u.cls === 'chevalier') { await hit(u, t, 1.6); if (t.hp > 0) { t.stun = 1; floatText(t, 'Étourdi', '#fff'); } }
+  else if (u.cls === 'mage' || u.cls === 'archer') {
+    const diag = u.cls === 'archer', near = alive('e').filter(e => e !== t && (diag ? Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) <= 1 : dist(e, t) === 1));
+    await hit(u, t, u.cls === 'mage' ? 1.3 : 1.1); for (const e of near) await damage(u, e, 0.9);
+  } else if (u.cls === 'voleur') { const l = landing(u, t); u.x = l[0]; u.y = l[1]; u.root.position.set(wx(u.x), 0, wx(u.y)); await hit(u, t, 1.8); }
+  else if (u.cls === 'lancier') { const dx = Math.sign(t.x - u.x), dy = Math.sign(t.y - u.y), b = dx && dy ? null : unitAt(t.x + dx, t.y + dy); await hit(u, t, 1.4); if (b && b.side === 'e' && b.hp > 0) await damage(u, b, 1.0); }
+  else if (u.cls === 'moine') { await hit(u, t, 1.0); if (t.hp > 0) await hit(u, t, 1.0); }
+  else if (u.cls === 'barde') { for (const p of alive('p')) if (dist(u, p) <= 3) { if ((p.buff || 0) < 6) { p.buff = (p.buff || 0) + 2; p.atk += 2; } p.hp = Math.min(p.max, p.hp + 5); floatText(p, 'ATQ +2', '#ffd23f'); } await wait(350); }
+  else if (u.cls === 'soigneur') { const h = 12 + 3 * u.m.lvl; t.hp = Math.min(t.max, t.hp + h); floatText(t, '+' + h, '#7dff9a'); await wait(300); }
+  else if (u.cls === 'invocateur') { const L = u.m.lvl, m = buildFoe('pelote');
+    const s = addUnit({ side: 'p', summon: true, name: 'Pelote', max: 12 + 4 * L, hp: 12 + 4 * L, atk: 6 + L, def: 1 + Math.floor(L / 3), mov: 4, rng: 1, crit: 0, x, y, cd: 0, stun: 0, done: true, moved: true, root: m.root, bob: m.bob });
+    s.root.scale.setScalar(0.9); floatText(s, 'Pelote !', '#9be7ff'); await wait(300); }
+}
+function checkEnd() {
+  if (B.over) return true;
+  if (!alive('e').length) { B.over = true; finish(true); return true; }
+  if (!alive('p').filter(u => !u.summon).length) { B.over = true; finish(false); return true; }
+  return false;
+}
+// ----- IA (ennemis, et alliés en mode automatique) -----
+async function aiAct(u) {
+  const side = u.side === 'p' ? 'e' : 'p'; let foes = alive(side); if (!foes.length) return;
+  if (u.boss && B.turn % 3 === 0) { const c = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [u.x + dx, u.y + dy]).find(([x, y]) => free(x, y)); if (c) { floatText(u, 'Invocation', '#c97bff'); await wait(300); makeFoeUnit('ombre', B.def.lvl, c[0], c[1]); } }
+  // distance réelle (en contournant les obstacles) jusqu'à l'adversaire le plus proche
+  const D = new Map(), q = foes.map(f => [f.x, f.y, 0]); q.forEach(([x, y]) => D.set(x + ',' + y, 0));
+  while (q.length) { const [x, y, d] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const a = x + dx, b = y + dy, k = a + ',' + b; if (a >= 0 && b >= 0 && a < N && b < N && !B.map.blocked[b][a] && !D.has(k)) { D.set(k, d + 1); q.push([a, b, d + 1]); } }); }
+  const R = reachOf(u); let best = null;
+  for (const k of R.keys()) { if (!canStop(R, k)) continue; const [x, y] = k.split(',').map(Number), p = { x, y };
+    const inR = foes.filter(f => dist(p, f) <= u.rng), near = Math.min(...foes.map(f => dist(p, f)));
+    const sc = inR.length ? 1000 - Math.min(...inR.map(f => f.hp)) + (u.rng > 1 ? near * 3 : 0) - dist(p, u) * 0.1 : -(D.has(k) ? D.get(k) : 99) - near * 0.01;
+    if (!best || sc > best.sc) best = { x, y, sc }; }
+  if (best && (best.x !== u.x || best.y !== u.y)) await moveUnit(u, best.x, best.y, R);
+  if (u.cls && !u.summon && u.cd === 0) { const ts = skillTargets(u); let t = null;
+    if (u.cls === 'soigneur') { const a = alive('p').filter(p => p.hp < p.max * 0.6 && dist(u, p) <= 3).sort((a, b) => a.hp / a.max - b.hp / b.max)[0]; if (a) t = [a.x, a.y]; }
+    else if (u.cls === 'barde') { if ((u.buff || 0) < 6) t = ts[0]; }
+    else if (ts.length) t = ts[0];
+    if (t) { await useSkill(u, t[0], t[1]); return; } }
+  foes = alive(side).filter(f => dist(u, f) <= u.rng).sort((a, b) => a.hp - b.hp);
+  if (foes.length) await hit(u, foes[0], 1);
+}
+async function autoTurn() {
+  B.busy = true;
+  for (const u of alive('p')) { if (B.over) return; if (u.done) continue; if (u.hp > 0) await aiAct(u); u.done = true; if (checkEnd()) return; }
+  B.busy = false; endTurn();
+}
+async function endTurn() {
+  if (B.busy || B.over) return; B.busy = true; B.sel = null; B.mode = 'idle'; clearHL(); B.phase = 'enemy'; refresh(); banner('Tour des Ombres'); await wait(500);
+  for (const e of alive('e')) { if (B.over) return; if (e.hp <= 0) continue; if (e.stun > 0) { e.stun--; floatText(e, 'Étourdi', '#fff'); await wait(250); continue; } await aiAct(e); if (checkEnd()) return; await wait(80); }
+  B.turn++; B.phase = 'player'; alive('p').forEach(u => { u.done = false; u.moved = false; if (u.cd > 0) u.cd--; });
+  B.busy = false; banner('Tour ' + B.turn); refresh(); if (AUTO) autoTurn();
+}
+// ----- commandes du joueur -----
+function select(u) { B.sel = u; B.mode = 'idle'; B.reach = u.moved ? null : reachOf(u); paint(); refresh(); }
+function paint() {
+  clearHL(); const u = B.sel; if (!u) return;
+  if (B.mode === 'target') { showHL(B.targets, B.tkind === 'atk' ? 0xff4a4a : (CLASSES[u.cls] && CLASSES[u.cls].kind === 'enemy' ? 0xff9a2a : 0x4ade80)); return; }
+  if (B.reach) showHL([...B.reach.keys()].filter(k => canStop(B.reach, k)).map(k => k.split(',').map(Number)), 0x4aa8ff);
+  showHL([[u.x, u.y]], 0xffffff);
+}
+function atkTargets(u) { return alive('e').filter(e => dist(u, e) <= u.rng).map(e => [e.x, e.y]); }
+function infoHTML(u) {
+  if (!u) return '<span class="muted">Touche un de tes personnages, puis une case bleue pour te déplacer.</span>';
+  const C = u.cls && !u.summon ? CLASSES[u.cls] : null;
+  return '<b>' + u.name + '</b> ' + (C ? '· ' + C.name + ' niv. ' + u.m.lvl : u.side === 'e' ? '· ennemi' : '· esprit allié') + '<br>PV ' + u.hp + '/' + u.max + ' · ATQ ' + u.atk + ' · DEF ' + u.def + ' · Portée ' + u.rng +
+    (C ? '<br><span class="muted">' + C.skill + (u.cd ? ' (dans ' + u.cd + ' tour' + (u.cd > 1 ? 's' : '') + ')' : ' : ' + C.sdesc) + '</span>' : '');
+}
+function refresh() {
+  if (!B) return; const u = B.sel, mine = u && u.side === 'p' && !u.done && B.phase === 'player' && !B.busy;
+  $('tTurn').textContent = 'Tour ' + B.turn; $('binfo').innerHTML = infoHTML(u || B.look);
+  const tg = B.mode === 'target';
+  $('bAtk').disabled = !mine || tg || !atkTargets(u).length; $('bSkill').disabled = !mine || tg || u.summon || u.cd > 0 || !skillTargets(u).length;
+  $('bSkill').textContent = mine && !u.summon ? CLASSES[u.cls].skill : 'Compétence';
+  $('bWait').disabled = !mine; $('bWait').textContent = tg ? 'Annuler' : 'Attendre'; $('bEnd').disabled = B.phase !== 'player' || B.busy;
+  B.units.forEach(x => { if (x.hp > 0) { x.bar.firstChild.style.width = Math.round(x.hp / x.max * 100) + '%'; x.bar.classList.toggle('done', x.side === 'p' && x.done && B.phase === 'player'); } });
+}
+async function afterAction(u) {
+  u.done = true; B.sel = null; B.mode = 'idle'; clearHL(); B.busy = false; if (checkEnd()) return; refresh();
+  if (!alive('p').some(p => !p.done)) endTurn();
+}
+const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+canvas.addEventListener('pointerdown', async ev => {
+  if (!B || B.over || B.busy || B.phase !== 'player' || AUTO || !board.visible) return;
+  const p = new THREE.Vector3(); ray.setFromCamera({ x: ev.clientX / window.innerWidth * 2 - 1, y: -(ev.clientY / window.innerHeight) * 2 + 1 }, cam);
+  if (!ray.ray.intersectPlane(plane, p)) return;
+  const x = Math.round(p.x + 3.5), y = Math.round(p.z + 3.5); if (x < 0 || y < 0 || x >= N || y >= N) return;
+  const u = B.sel, o = unitAt(x, y);
+  if (B.mode === 'target') {
+    if (!B.targets.some(t => t[0] === x && t[1] === y)) return;
+    B.busy = true; clearHL(); if (B.tkind === 'atk') await hit(u, o, 1); else await useSkill(u, x, y); afterAction(u); return;
+  }
+  if (o && o.side === 'p' && !o.done) { select(o); return; }
+  if (o) { B.look = o; B.sel = null; clearHL(); refresh(); B.look = null; return; }
+  if (u && !u.done && !u.moved && B.reach && B.reach.has(x + ',' + y) && canStop(B.reach, x + ',' + y)) {
+    B.busy = true; clearHL(); await moveUnit(u, x, y, B.reach); u.moved = true; B.busy = false; select(u);
+  }
+});
+$('bAtk').onclick = () => { B.mode = 'target'; B.tkind = 'atk'; B.targets = atkTargets(B.sel); paint(); refresh(); };
+$('bSkill').onclick = () => { B.mode = 'target'; B.tkind = 'skill'; B.targets = skillTargets(B.sel); paint(); refresh(); };
+$('bWait').onclick = () => { if (B.mode === 'target') { B.mode = 'idle'; paint(); refresh(); } else afterAction(B.sel); };
+$('bEnd').onclick = () => endTurn();
+
+// =================================================================== ÉCRANS
+function ui(html, handlers, center) {
+  UIW.className = center ? 'center' : ''; UI.innerHTML = html; UI.scrollTop = 0;
+  UI.querySelectorAll('[data-a]').forEach(b => { b.onclick = () => handlers[b.dataset.a](b.dataset.v); });
+  UI.querySelectorAll('select[data-c]').forEach(s => { s.onchange = () => handlers[s.dataset.c](s.dataset.v, s.value); });
+}
+function story(lines, then) {
+  let i = 0; const show = () => { const [who, text] = lines[i];
+    ui((who ? '<div class="speaker">' + fill2(who) + '</div>' : '') + '<p>' + fill2(text) + '</p><div class="row end"><span class="muted" style="margin-right:auto">' + (i + 1) + ' / ' + lines.length + '</span><button class="primary" data-a="n">' + (i < lines.length - 1 ? 'Suivant' : 'Continuer') + '</button></div>',
+      { n: () => { if (++i < lines.length) show(); else then(); } }); };
+  show();
+}
+function fill2(t) { return G && G.comp ? fill(t) : t; }
+function title() {
+  setStage(LOOKS.map((l, i) => ({ look: i, cls: ['chevalier', 'mage', 'voleur', 'invocateur', 'lancier', 'barde'][i] })));
+  const s = load();
+  ui('<h1>Les Gardiens du Bonnet</h1><p>Un petit RPG tactique au tour par tour dans la vallée de Mailleval.</p><p class="row" style="justify-content:center;margin-top:14px">' +
+    (s ? '<button class="primary" data-a="c">Continuer</button><button data-a="n">Nouvelle partie</button>' : '<button class="primary" data-a="n">Nouvelle partie</button>') + '</p>',
+    { c: () => { G = s; hub(); }, n: () => create() }, true);
+}
+function create() {
+  let look = 0, cls = 'chevalier';
+  const draw = () => { setStage([{ look, cls }]);
+    ui('<h2>Crée ton Gardien</h2><h3>Apparence</h3><div class="grid" style="grid-template-columns:repeat(3,1fr)">' + LOOKS.map((l, i) => '<button class="card' + (i === look ? ' on' : '') + '" data-a="l" data-v="' + i + '"><b>' + l.name + '</b><span>' + [l.skin, l.beanie, l.shirt, l.pants].map(c => '<i class="sw" style="background:#' + c.toString(16).padStart(6, '0') + '"></i>').join('') + '</span></button>').join('') +
+      '</div><h3>Classe</h3><div class="grid">' + Object.keys(CLASSES).map(k => '<button class="card' + (k === cls ? ' on' : '') + '" data-a="k" data-v="' + k + '"><b>' + CLASSES[k].name + '</b><span>' + CLASSES[k].desc + '</span></button>').join('') +
+      '</div><p class="muted" style="margin-top:10px">' + CLASSES[cls].skill + ' : ' + CLASSES[cls].sdesc + '</p><div class="row end"><button class="primary" data-a="go">Commencer l\'aventure</button></div>',
+      { l: v => { look = +v; draw(); }, k: v => { cls = v; draw(); }, go: () => {
+        const others = LOOKS.map((_, i) => i).filter(i => i !== look);
+        const c1 = ['chevalier', 'mage'].find(c => c !== cls), c2 = ['soigneur', 'archer'].find(c => c !== cls), c3 = ['lancier', 'barde'].find(c => c !== cls);
+        const comp = [member(others[0], c1), member(others[1], c2), member(others[2], c3)];
+        G = { party: [member(look, cls), comp[0]], comp, bag: [], gold: 0, story: 0, sides: {} };
+        story(INTRO, hub); } }); };
+  draw();
+}
+function hub() {
+  save(); B = null; $('top').classList.add('hide'); $('bhud').classList.add('hide'); bars.innerHTML = ''; setStage(G.party);
+  const next = MAIN[G.story], sides = SIDES.filter(s => G.story >= s.after && !G.sides[s.id]);
+  ui('<div class="row" style="justify-content:space-between"><h2 style="margin:0">Vallée de Mailleval</h2><span class="chip gold">' + G.gold + ' or</span></div>' +
+    '<p class="muted">Bobines retrouvées : ' + Math.min(3, [0, 0, 1, 2, 2, 3][G.story]) + ' / 3 · Équipe : ' + G.party.map(m => m.name + ' niv. ' + m.lvl).join(', ') + '</p>' +
+    (next ? '<div class="node main"><div><b>' + next.title + '</b><span>' + next.sub + '</span></div><button class="primary" data-a="m">Jouer</button></div>' : '<div class="node main"><div><b>Mailleval est sauvée</b><span>L\'histoire est terminée. Bravo, Gardien !</span></div></div>') +
+    sides.map(s => '<div class="node"><div><b>' + s.title + '</b><span>' + s.sub + ' · récompense : ' + (s.item ? ITEMS[s.item].name : 'un nouveau compagnon') + '</span></div><button class="side" data-a="s" data-v="' + s.id + '">Jouer</button></div>').join('') +
+    (G.story >= 1 ? '<div class="node"><div><b>Terrain d\'entraînement</b><span>Répétable · pour gagner de l\'expérience et un peu d\'or</span></div><button class="train" data-a="tr">S\'entraîner</button></div>' : '') +
+    '<div class="row" style="margin-top:12px"><button data-a="team" style="flex:1">Équipe et équipement</button><button data-a="shop" style="flex:1"' + (G.story < 1 ? ' disabled' : '') + '>Boutique</button></div>',
+    { m: () => play(next), s: id => play(SIDES.find(s => s.id === id)), tr: () => play(trainingDef()), team: () => team(0), shop });
+}
+function play(def) { story(def.pre, () => startBattle(def)); }
+function finish(win) {
+  const def = B.def; $('bhud').classList.add('hide'); $('top').classList.add('hide'); clearHL();
+  if (!win) { ui('<h2>Défaite…</h2><p>Les Ombres ont eu le dessus. Reprends ton souffle : passe à la boutique ou change d\'équipement, puis réessaie.</p><div class="row end"><button data-a="h">Retour à la vallée</button><button class="primary" data-a="r">Réessayer</button></div>', { h: hub, r: () => startBattle(def) }); return; }
+  if (def.repeat) def.post = def.post.slice();
+  const isMain = def.id[0] === 'b', xp = 60 + 20 * def.lvl, ups = [];
+  G.gold += def.gold; G.party.forEach(m => { m.xp += xp; while (m.xp >= need(m)) { m.xp -= need(m); m.lvl++; ups.push(m.name + ' passe niveau ' + m.lvl); } });
+  if (def.item) G.bag.push(def.item);
+  if (isMain) G.story++; else if (!def.repeat) G.sides[def.id] = true;
+  if (def.join) { const c = G.comp[def.join]; c.lvl = Math.max(1, G.party[0].lvl - 1); G.party.push(c); }
+  save();
+  ui('<h2>Victoire !</h2><p>' + (def.gold ? '<span class="chip gold">+' + def.gold + ' or</span> ' : '') + '<span class="chip">+' + xp + ' XP</span>' + (def.item ? ' <span class="chip">' + ITEMS[def.item].name + '</span>' : '') + '</p>' +
+    (ups.length ? '<p>' + ups.join('<br>') + '</p>' : '') + '<div class="row end"><button class="primary" data-a="n">Continuer</button></div>', { n: () => story(def.post, hub) });
+}
+function team(i) {
+  const m = G.party[i], s = stats(m), C = CLASSES[m.cls]; setStage([m]);
+  ui('<div class="row">' + G.party.map((p, j) => '<button class="' + (j === i ? 'primary' : '') + '" data-a="t" data-v="' + j + '">' + p.name + '</button>').join('') + '</div>' +
+    '<h2 style="margin-top:12px">' + m.name + ' · ' + C.name + ' niv. ' + m.lvl + '</h2><p>PV ' + s.hp + ' · ATQ ' + s.atk + ' · DEF ' + s.def + ' · Déplacement ' + s.mov + ' · Portée ' + s.rng + (s.crit ? ' · Critique ' + Math.round(s.crit * 100) + '%' : '') + '</p>' +
+    '<p class="muted">' + C.skill + ' : ' + C.sdesc + ' · XP ' + m.xp + '/' + need(m) + '</p><div class="slot"><label>Classe</label><select data-c="cls" data-v="x">' + Object.keys(CLASSES).map(k => '<option value="' + k + '"' + (k === m.cls ? ' selected' : '') + '>' + CLASSES[k].name + '</option>').join('') + '</select></div><h3>Équipement</h3>' +
+    SLOTS.map(([k, label]) => { const opts = [m.eq[k]].concat(G.bag.filter(id => ITEMS[id].slot === k));
+      return '<div class="slot"><label>' + label + '</label><select data-c="e" data-v="' + k + '">' + opts.map((id, n) => '<option value="' + n + '">' + itemName(id, m.cls) + (itemBonus(id) ? ' (' + itemBonus(id) + ')' : '') + '</option>').join('') + '</select></div>'; }).join('') +
+    '<p class="muted">Tu peux changer la classe de chaque personnage quand tu veux. Les objets achetés ou gagnés apparaissent dans les listes.</p><div class="row end"><button class="primary" data-a="b">Retour</button></div>',
+    { t: v => team(+v), b: hub, cls: (_, v) => { m.cls = v; save(); team(i); }, e: (k, n) => { n = +n; if (!n) return; const pool = G.bag.filter(id => ITEMS[id].slot === k), id = pool[n - 1], old = m.eq[k]; G.bag.splice(G.bag.indexOf(id), 1); if (old) G.bag.push(old); m.eq[k] = id; save(); team(i); } });
+}
+function shop() {
+  const list = Object.keys(ITEMS).filter(id => ITEMS[id].price && ITEMS[id].need <= G.story - 1);
+  ui('<div class="row" style="justify-content:space-between"><h2 style="margin:0">Boutique de Mailleval</h2><span class="chip gold">' + G.gold + ' or</span></div><p class="muted">De nouveaux objets arrivent quand l\'histoire avance. Les armes s\'adaptent à la classe de celui qui les porte.</p>' +
+    SLOTS.map(([k, label]) => '<h3>' + label + '</h3>' + list.filter(id => ITEMS[id].slot === k).map(id => '<div class="node"><div><b>' + ITEMS[id].name + '</b><span>' + itemBonus(id) + (G.bag.filter(b => b === id).length ? ' · en sac : ' + G.bag.filter(b => b === id).length : '') + '</span></div><button data-a="buy" data-v="' + id + '"' + (G.gold < ITEMS[id].price ? ' disabled' : '') + '>' + ITEMS[id].price + ' or</button></div>').join('')).join('') +
+    '<div class="row end"><button class="primary" data-a="b">Retour</button></div>',
+    { b: hub, buy: id => { if (G.gold >= ITEMS[id].price) { G.gold -= ITEMS[id].price; G.bag.push(id); save(); const st = UI.scrollTop; shop(); UI.scrollTop = st; } } });
+}
+
+// =================================================================== BOUCLE
+let last = performance.now(), time = 0; const v3 = new THREE.Vector3();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+  for (let i = tweens.length - 1; i >= 0; i--) { const t = tweens[i]; t.t += dt; const k = Math.min(1, t.t / t.dur); t.fn(k); if (k >= 1) { tweens.splice(i, 1); t.res(); } }
+  if (stage.visible) stageH.forEach((H, i) => { if (stageH.length === 1) H.root.rotation.y = Math.PI / 4 + Math.sin(time * 0.8) * 0.9; H.body.position.y = Math.sin(time * 2 + i) * 0.015; H.arms[0].rotation.x = Math.sin(time * 2 + i) * 0.08; H.arms[1].rotation.x = -Math.sin(time * 2 + i) * 0.08; });
+  if (B && board.visible) B.units.forEach(u => { if (u.hp <= 0) return; u.t += dt;
+    if (u.H) { const w = u.walk ? Math.sin(u.t * 16) : 0; u.H.legs[0].rotation.x = w * 0.8; u.H.legs[1].rotation.x = -w * 0.8; u.H.arms[0].rotation.x = -w * 0.7; u.H.arms[1].rotation.x = w * 0.7; u.H.body.position.y = u.walk ? Math.abs(w) * 0.04 : Math.sin(u.t * 2.2) * 0.012; }
+    else if (u.bob) { u.bob.position.y = (u.type === 'chauve' ? 0.5 : u.summon ? 0.25 : 0) + Math.abs(Math.sin(u.t * 3)) * 0.06; u.bob.children.forEach(c => { if (c.userData.wing) c.rotation.z = c.userData.wing * Math.sin(u.t * 14) * 0.5; }); }
+    v3.set(u.root.position.x, (u.boss ? 2.5 : u.type === 'golem' ? 1.6 : 1.35), u.root.position.z).project(cam);
+    u.bar.style.left = (v3.x + 1) / 2 * window.innerWidth + 'px'; u.bar.style.top = (1 - v3.y) / 2 * window.innerHeight + 'px'; });
+  renderer.render(scene, cam); requestAnimationFrame(frame);
+}
+window.__rpg = { ITEMS, get G() { return G; }, get B() { return B; }, set speed(v) { SPEED = v; }, set auto(v) { AUTO = v; if (v && B && !B.over && !B.busy && B.phase === 'player') autoTurn(); } };
+title(); requestAnimationFrame(frame);
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
+})();
+</script>
+</body>
+</html>
